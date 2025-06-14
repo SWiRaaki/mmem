@@ -13,27 +13,27 @@
 typedef unsigned int bitslot_t;
 #define SLOT_BITS ((bitslot_t)sizeof( bitslot_t ) * 8)
 
-inline bitslot_t bitmask( unsigned int bit ) {
+static inline bitslot_t bitmask( unsigned int bit ) {
 	return 1 << ( bit % SLOT_BITS );
 }
 
-inline bitslot_t bitslot( unsigned int bit ) {
+static inline bitslot_t bitslot( unsigned int bit ) {
 	return bit / SLOT_BITS;
 }
 
-inline void bitset( bitslot_t * set, unsigned int bit ) {
+static inline void bitset( bitslot_t * set, unsigned int bit ) {
 	set[bitslot( bit )] |= bitmask( bit );
 }
 
-inline void bitclear( bitslot_t * set, unsigned int bit ) {
+static inline void bitclear( bitslot_t * set, unsigned int bit ) {
 	set[bitslot( bit )] &= ~bitmask( bit );
 }
 
-inline int bittest( bitslot_t * set, unsigned int bit ) {
+static inline int bittest( bitslot_t * set, unsigned int bit ) {
 	return (int)( set[bitslot( bit )] & bitmask( bit ) );
 }
 
-inline bitslot_t bitslots( unsigned int bits ) {
+static inline bitslot_t bitslots( unsigned int bits ) {
 	return (bits + SLOT_BITS - 1) / SLOT_BITS;
 }
 
@@ -55,9 +55,17 @@ static inline void ZeroOnRelease( void * element, size_t const size ) {
 #endif
 }
 
+static inline void * Allocate( size_t const capacity, size_t const size ) {
+#if MMEM_ZERO_POLICY != MMEM_ZERO_POLICY_ONRELEASE
+	return malloc( capacity * size );
+#else
+	return calloc( capacity, size );
+#endif
+}
+
 MemoryPool PoolCreate( size_t const p_element_size, size_t const p_capacity ) {
 	return (MemoryPool) {
-		.Raw = calloc( p_capacity, p_element_size ),
+		.Raw = Allocate( p_capacity, p_element_size ),
 		.List = calloc( bitslots( (bitslot_t)p_capacity ), sizeof( bitslot_t ) ),
 		.ElementSize = p_element_size,
 		.Capacity = p_capacity

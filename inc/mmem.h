@@ -4,6 +4,26 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#define POOLDATA_ALL \
+size_t Used;\
+size_t Cursor;\
+void * List;\
+void * Raw;\
+size_t ElementSize;\
+size_t Capacity;\
+size_t __PADDING[2]
+
+#define POOLDATA_TYPED( type ) \
+size_t Used;\
+size_t Cursor;\
+void * List;\
+type * Raw;\
+size_t ElementSize;\
+size_t Capacity;\
+size_t __PADDING[2]
+
+#define POOLDATA_ANY size_t __PADDING[sizeof( MemoryPool ) / sizeof( size_t )]
+
 /**
  * @brief Memory Pool state structure.
  * @details Refrain from accessing members directly unless you know what you do!
@@ -64,7 +84,7 @@ void PoolReset( MemoryPool * pool );
  * @param pool		Memory Pool to check
  * @return size_t	Number of allocated object slots
  */
-inline size_t PoolSlotsInUse( MemoryPool * pool ) {
+static inline size_t PoolSlotsInUse( MemoryPool * pool ) {
 	return pool->Used;
 }
 
@@ -73,7 +93,7 @@ inline size_t PoolSlotsInUse( MemoryPool * pool ) {
  * @param pool		Memory Pool to check
  * @return size_t	Number of unallocated object slots
  */
-inline size_t PoolSlotsAvailable( MemoryPool * pool ) {
+static inline size_t PoolSlotsAvailable( MemoryPool * pool ) {
 	return pool->Capacity - pool->Used;
 }
 
