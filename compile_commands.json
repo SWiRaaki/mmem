@@ -1,0 +1,12 @@
+[
+{
+  "directory": "/home/raki/dev/git/mmem/build",
+  "command": "/usr/bin/cc -DMMEM_BUILD_STATIC -DPLATFORM_LINUX -I/home/raki/dev/git/mmem/inc -I/home/raki/dev/git/mmem/tpl  -nodefaultlibs -fno-rtti -fno-exceptions -pedantic -Wall -Wextra -Wconversion -Wreturn-type -Werror=all -Werror=extra -Werror=conversion -Werror=return-type -O3 -std=gnu99 -o CMakeFiles/mmem_static.dir/src/mmem.c.o -c /home/raki/dev/git/mmem/src/mmem.c",
+  "file": "/home/raki/dev/git/mmem/src/mmem.c"
+},
+{
+  "directory": "/home/raki/dev/git/mmem/build",
+  "command": "/usr/bin/cc -DMMEM_BUILD_UTEST -DPLATFORM_LINUX -I/home/raki/dev/git/mmem/inc -I/home/raki/dev/git/mmem/tpl  -nodefaultlibs -fno-rtti -fno-exceptions -pedantic -Wall -Wextra -Wconversion -Wreturn-type -Werror=all -Werror=extra -Werror=conversion -Werror=return-type -O3 -std=gnu99 -o CMakeFiles/mmem_test.dir/main.c.o -c /home/raki/dev/git/mmem/main.c",
+  "file": "/home/raki/dev/git/mmem/main.c"
+}
+]
