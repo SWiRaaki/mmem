@@ -4,7 +4,7 @@ endif()
 
 cmake_minimum_required( VERSION 3.10 )
 
-project( mmem )
+project( mmem C )
 
 set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 
@@ -35,7 +35,7 @@ if( WIN32 )
 elseif( UNIX )
 	# message( STATUS "Build for Linux starts.." )
 	add_definitions( -DPLATFORM_LINUX )
-	set( CMAKE_C_FLAGS ${CMAKE_C_FLAGS} " -nodefaultlibs -fno-exceptions -pedantic -Wall -Wextra -Wconversion -Wreturn-type -Werror=all -Werror=extra -Werror=conversion -Werror=return-type" )
+	set( CMAKE_C_FLAGS ${CMAKE_C_FLAGS} " -nodefaultlibs -fno-exceptions -pedantic -Wall -Wextra -Wconversion -Wreturn-type -Werror=all -Werror=extra -Werror=conversion -Werror=return-type -Wno-unused-function" )
 	set( CMAKE_C_FLAGS_DEBUG "-g2" )
 	set( CMAKE_C_FLAGS_RELEASE "-O3" )
 	set( OS_LIBS "c" )
