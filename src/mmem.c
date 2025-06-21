@@ -2,14 +2,6 @@
 
 #include <string.h>
 
-#define MMEM_ZERO_POLICY_ONALLOCATE 0
-#define MMEM_ZERO_POLICY_ONRELEASE 1
-#define MMEM_ZERO_POLICY_MANUAL 2
-
-#if !defined( MMEM_ZERO_POLICY ) || ( MMEM_ZERO_POLICY != 0 && MMEM_ZERO_POLICY != 1 && MMEM_ZERO_POLICY != 2 )
-#define MMEM_ZERO_POLICY MMEM_ZERO_POLICY_ONRELEASE
-#endif
-
 typedef unsigned int bitslot_t;
 #define SLOT_BITS ((bitslot_t)sizeof( bitslot_t ) * 8)
 
@@ -37,6 +29,14 @@ static inline bitslot_t bitslots( unsigned int bits ) {
 	return (bits + SLOT_BITS - 1) / SLOT_BITS;
 }
 
+static inline size_t Align( size_t unaligned ) {
+#if MMEM_ALIGNMENT_POLCY & MMEM_ALIGNMENT_POLICY_HEAP
+	return unaligned + (MMEM_ALIGNMENT_CACHELINE - unaligned % MMEM_ALIGNMENT_CACHELINE);
+#else
+	return unaligned;
+#endif
+}
+
 static inline void ZeroOnAllocate( void * element, size_t const size ) {
 #if MMEM_ZERO_POLICY == MMEM_ZERO_POLICY_ONALLOCATE
 	memset( element, 0x00, size );
@@ -57,25 +57,28 @@ static inline void ZeroOnRelease( void * element, size_t const size ) {
 
 static inline void * Allocate( size_t const capacity, size_t const size ) {
 #if MMEM_ZERO_POLICY != MMEM_ZERO_POLICY_ONRELEASE
-	return malloc( capacity * size );
+	return malloc( Align( capacity ) * size );
 #else
-	return calloc( capacity, size );
+	return calloc( Align( capacity ), size );
 #endif
 }
 
 MemoryPool PoolCreate( size_t const p_element_size, size_t const p_capacity ) {
 	return (MemoryPool) {
 		.Raw = Allocate( p_capacity, p_element_size ),
-		.List = calloc( bitslots( (bitslot_t)p_capacity ), sizeof( bitslot_t ) ),
+		.List = calloc( Align( bitslots( (bitslot_t)p_capacity ) ), sizeof( bitslot_t ) ),
 		.ElementSize = p_element_size,
-		.Capacity = p_capacity
+		.Capacity = Align( p_capacity )
 	};
 }
 
 void PoolDestroy( MemoryPool * p_pool ) {
 	free( p_pool->Raw );
 	free( p_pool->List );
+
+#if MMEM_ZERO_POLICY == MMEM_ZERO_POLICY_ONRELEASE
 	memset( p_pool, 0x00, sizeof( MemoryPool ) );
+#endif
 }
 
 void * PoolAllocate( MemoryPool * p_pool ) {
@@ -130,4 +133,38 @@ void PoolReset( MemoryPool * p_pool ) {
 #endif
 
 	memset( p_pool->List, 0x00, bitslots( (bitslot_t)p_pool->Capacity ) );
+}
+
+MemoryArena ArenaCreate( const size_t p_capacity ) {
+	return (MemoryArena) {
+		.Used = 0,
+		.Raw = Allocate( p_capacity, 1 ),
+		.Capacity = Align( p_capacity )
+	};
+}
+
+void ArenaDestroy( MemoryArena * p_arena ) {
+	free( p_arena->Raw );
+
+#if MMEM_ZERO_POLICY == MMEM_ZERO_POLICY_ONRELEASE
+	memset( p_arena, 0x00, sizeof( MemoryArena ) );
+#endif
+}
+
+void * ArenaAllocate( MemoryArena * p_arena, size_t p_size ) {
+	if ( p_arena->Used + p_size > p_arena->Capacity ) {
+		return NULL;
+	}
+
+	void * ptr = (char *)p_arena->Raw + p_size;
+	ZeroOnAllocate( ptr, p_size );
+	return ptr;
+}
+
+void ArenaReset( MemoryArena * p_arena ) {
+	p_arena->Used = 0;
+
+#if MMEM_ZERO_POLICY == MMEM_ZERO_POLICY_ONRELEASE
+	memset( p_arena->Raw, 0x00, p_arena->Capacity );
+#endif
 }
