@@ -4,26 +4,19 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#define POOLDATA_ALL \
-size_t Used;\
-size_t Cursor;\
-void * List;\
-void * Raw;\
-size_t ElementSize;\
-size_t Capacity;\
-size_t __PADDING[2]
+#define MMEM_KB_BYTES( kb ) (kb * 1024LU )
+#define MMEM_MB_BYTES( mb ) (MMEM_KB_BYTES( mb * 1024LU ))
+#define MMEM_GB_BYTES( gb ) (MMEM_MB_BYTES( gb * 1024LU ))
+#define MMEM_TB_BYTES( tb ) (MMEM_GB_BYTES( tb * 1024LU ))
 
-#define POOLDATA_TYPED( type ) \
-size_t Used;\
-size_t Cursor;\
-void * List;\
-type * Raw;\
-size_t ElementSize;\
-size_t Capacity;\
-size_t __PADDING[2]
+#ifndef MMEM_ALIGNMENT_CACHELINE
+#define MMEM_ALIGNMENT_CACHELINE 64
+#endif
+#ifndef MMEM_ALIGNMENT_CACHEL1
+#define MMEM_ALIGNMENT_CACHEL1 MMEM_KB_BYTES( 16 );
+#endif
 
-#define POOLDATA_ANY size_t __PADDING[sizeof( MemoryPool ) / sizeof( size_t )]
-
+#define MMEM_POOL_ALIGNMENT (MMEM_ALIGNMENT_CACHELINE - (sizeof( size_t ) * 4 + sizeof( void * ) * 2))
 /**
  * @brief Memory Pool state structure.
  * @details Refrain from accessing members directly unless you know what you do!
@@ -42,7 +35,7 @@ typedef struct {
 	/// @brief Maximum number of elements managable by this pool
 	size_t Capacity;
 	/// @brief Padding bytes
-	size_t __PADDING[2];
+	char __PADDING[MMEM_POOL_ALIGNMENT];
 } MemoryPool;
 
 /**

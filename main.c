@@ -17,6 +17,7 @@ typedef struct {
 
 int main( void ) {
 	MemoryPool pool = PoolCreate( sizeof( Entity ), 64 );
+	return 0;
 
 	while ( SOME_CONDITION ) {
 		Entity * entity = NULL;
