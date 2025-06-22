@@ -34,7 +34,7 @@
 #define MMEM_ALIGNMENT_POLICY_STRUCT 1
 #define MMEM_ALIGNMENT_POLICY_STACK  2
 #define MMEM_ALIGNMENT_POLICY_HEAP   4
-#define MMEM_ALIGNMENT_ALL           7
+#define MMEM_ALIGNMENT_POLICY_ALL    7
 
 #if !defined( MMEM_ALIGNMENT_POLICY )
 #define MMEM_ALIGNMENT_POLICY MMEM_ALIGNMENT_POLICY_ALL
@@ -42,8 +42,12 @@
 
 /// @brief Size of the padding needed to make a pool struct cache aligned
 #define MMEM_POOL_PADDING (MMEM_ALIGNMENT_CACHELINE - (sizeof( size_t ) * 4 + sizeof( void * ) * 2) % MMEM_ALIGNMENT_CACHELINE)
+/// @brief Size of the padding needed to make a complex pool struct cache aligned
+#define MMEM_CPOOL_PADDING (MMEM_ALIGNMENT_CACHELINE - (sizeof( size_t ) * 4 + sizeof( void * ) * 4 ) % MMEM_ALIGNMENT_CACHELINE)
 /// @brief Size of the padding needed to make an arena struct cache aligned
 #define MMEM_ARENA_PADDING (MMEM_ALIGNMENT_CACHELINE - (sizeof( size_t ) * 2 + sizeof( void *) ) % MMEM_ALIGNMENT_CACHELINE)
+/// @brief Size of the padding needed to make a complex arena struct cache aligned
+#define MMEM_CARENA_PADDING (MMEM_ALIGNMENT_CACHELINE - (sizeof( size_t ) * 2 + sizeof( void * ) * 3) % MMEM_ALIGNMENT_CACHELINE)
 
 /**
  * @brief Calculates kilobytes to bytes
@@ -141,6 +145,29 @@ typedef struct {
 } MemoryPool;
 
 typedef struct {
+	/// @brief Number of slots used in this pool
+	size_t Used;
+	/// @brief Active cursor for searching available slots
+	size_t Cursor;
+	/// @brief Anonymous List of slot states( USED/UNUSED )
+	void * List;
+	/// @brief Raw chunk of memory owned by this pool
+	void * Raw;
+	/// @brief Size of the element type managed by this pool in bytes
+	size_t ElementSize;
+	/// @brief Maximum number of elements managable by this pool
+	size_t Capacity;
+	/// @brief Pointer to a function that will be used to allocate the memory block
+	void * (*ChunkAllocate)( size_t capacity, size_t element_size );
+	/// @brief Pointer to a function that will be used to deallocate the memory block
+	void (*ChunkRelease)( void * chunk );
+#if MMEM_ALIGNMENT_POLICY & MMEM_ALIGNMENT_POLICY_STRUCT
+	/// @brief Padding bytes
+	char __PADDING[MMEM_CPOOL_PADDING];
+#endif
+} ComplexPool;
+
+typedef struct {
 	/// @brief Number of bytes used in this arena
 	size_t Used;
 	/// @brief Raw chunk of memory owned by this pool
@@ -152,6 +179,18 @@ typedef struct {
 	char __PADDING[MMEM_ARENA_PADDING];
 #endif
 } MemoryArena;
+
+typedef struct {
+	size_t Used;
+	void * Raw;
+	size_t Capacity;
+	void * (*ChunkAllocate)( size_t capacity );
+	void (*ChunkRelease)( void * chunk );
+#if MMEM_ALIGNMENT_POLICY & MMEM_ALIGNMENT_POLICY_STRUCT
+	/// @brief Padding bytes
+	char __PADDING[MMEM_CARENA_PADDING];
+#endif
+} ComplexArena;
 
 /**
  * @brief Creates a pool for elements of given size

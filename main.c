@@ -1,51 +1,71 @@
-#include <stdlib.h>
-#include <stdio.h>
-
 #include "mmem.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
 
+// Simple struct to test allocations
 typedef struct {
-	size_t	ID;
-	char *	Name;
-	float	X;
-	float	Y;
-	float	XDelta;
-	float	YDelta;
-	void *	DATA;
-} Entity;
+    int x, y;
+    float value;
+} TestStruct;
 
-#define SOME_CONDITION 1
+#define POOL_CAPACITY 64
+#define ARENA_SIZE (1024 * sizeof(TestStruct))
 
-int main( void ) {
-	MemoryPool pool = PoolCreate( sizeof( Entity ), 64 );
-	return 0;
+int main(void) {
+	printf( "Zero-Policy: %d\n", MMEM_ZERO_POLICY );
+	printf( "Alignment-Policy: %d\n", MMEM_ALIGNMENT_POLICY );
+	printf( "sizeof MemoryPool: %zu\n", sizeof( MemoryPool ) );
+	printf( "padding: %lu\n", MMEM_POOL_PADDING );
+	printf( "sizeof ComplexPool: %zu\n", sizeof( ComplexPool ) );
+	printf( "padding: %lu\n", MMEM_CPOOL_PADDING );
+	printf( "sizeof MemoryArena: %zu\n", sizeof( MemoryArena ) );
+	printf( "padding: %lu\n", MMEM_ARENA_PADDING );
+	printf( "sizeof ComplexArena: %zu\n", sizeof( ComplexArena ) );
+	printf( "padding: %lu\n", MMEM_CARENA_PADDING );
 
-	while ( SOME_CONDITION ) {
-		Entity * entity = NULL;
-		printf( "Creating an entity..\n" );
-		entity = PoolAllocate( &pool );
-		entity->ID = PoolSlotsAvailable( &pool );
-		entity->Name = "Unknown Entity";
+    // --- Pool Test ---
+    MemoryPool pool = PoolCreate(sizeof(TestStruct), POOL_CAPACITY);
 
-		if ( PoolSlotsInUse( &pool ) > 10) {
-			if ( rand() % 5 == 0 ) {
-				printf( "Entity released!\n" );
-				PoolRelease( &pool, entity );
-			}
-		}
-		if ( entity ) {
-			printf( "Entity: [%zu] %s\n", entity->ID, entity->Name ? entity->Name : "<NULL>" );
-			printf( "Location: %f|%f, moving %f|%f\n", entity->X, entity->Y, entity->XDelta, entity->YDelta );
-		} else {
-			printf( "Entity: NULL\n" );
-		}
-		printf( "Pool: [USED=%zu] [AVAILABLE=%zu]\n", PoolSlotsInUse( &pool ), PoolSlotsAvailable( &pool ) );
-		
-		if ( PoolSlotsAvailable( &pool ) == 0 ) {
-			break;
-		}
-	}
+    TestStruct *pool_ptrs[POOL_CAPACITY];
+    for (size_t i = 0; i < POOL_CAPACITY; ++i) {
+        pool_ptrs[i] = PoolAllocate(&pool);
+        assert(pool_ptrs[i] != NULL);
+        pool_ptrs[i]->x = (int)i;
+        pool_ptrs[i]->y = (int)(i * 2);
+        pool_ptrs[i]->value = (float)i / 2.0f;
+    }
 
-	printf( "Filled pool, did stuff, now releasing it..\n" );
-	PoolDestroy( &pool );
-	return 0;
+    // Check reuse logic
+    for (size_t i = 0; i < POOL_CAPACITY; ++i) {
+        PoolRelease(&pool, pool_ptrs[i]);
+    }
+
+    assert(PoolSlotsAvailable(&pool) == POOL_CAPACITY);
+    PoolDestroy(&pool);
+
+    // --- Arena Test ---
+    MemoryArena arena = ArenaCreate(ARENA_SIZE);
+
+    TestStruct *a1 = ArenaAllocate(&arena, sizeof(TestStruct));
+    TestStruct *a2 = ArenaAllocate(&arena, sizeof(TestStruct));
+    TestStruct *a3 = ArenaAllocate(&arena, sizeof(TestStruct));
+
+    assert(a1 && a2 && a3);
+
+    a1->x = 1;
+    a2->x = 2;
+    a3->x = 3;
+
+    ArenaReset(&arena);
+
+    TestStruct *a4 = ArenaAllocate(&arena, sizeof(TestStruct));
+    assert(a4 != NULL);
+
+    ArenaDestroy(&arena);
+
+    // --- Success ---
+    printf("[mmem test] All tests passed.\n");
+    return EXIT_SUCCESS;
 }
