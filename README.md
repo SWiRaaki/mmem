@@ -21,7 +21,7 @@ link against the static library produced by cmake. for that you can also just co
 - Small and focused codebase, since internals are accessible and extendable
 
 ## Philosophy
-==mmem== encourages a mindset shift from usual c memory approaches:
+*mmem* encourages a mindset shift from usual c memory approaches:
 **Think in terms of memory lifetimes and groups, not individual allocations**
 - mmem is not a library for safety mechanism, it is a tool structured for responsibility
 - Arenas help simplify temporary memory usage and reduce fragmentations
