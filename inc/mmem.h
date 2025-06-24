@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include "mmem.compiler.h"
+
 /// @brief Factor to calculate kilobytes to bytes
 #define MMEM_KB_FACTOR (1024LU)
 /// @brief Factor to calculate megabytes to bytes
@@ -40,14 +42,46 @@
 #define MMEM_ALIGNMENT_POLICY MMEM_ALIGNMENT_POLICY_ALL
 #endif
 
-/// @brief Size of the padding needed to make a pool struct cache aligned
-#define MMEM_POOL_PADDING (MMEM_ALIGNMENT_CACHELINE - (sizeof( size_t ) * 4 + sizeof( void * ) * 2) % MMEM_ALIGNMENT_CACHELINE)
-/// @brief Size of the padding needed to make a complex pool struct cache aligned
-#define MMEM_CPOOL_PADDING (MMEM_ALIGNMENT_CACHELINE - (sizeof( size_t ) * 4 + sizeof( void * ) * 4 ) % MMEM_ALIGNMENT_CACHELINE)
-/// @brief Size of the padding needed to make an arena struct cache aligned
-#define MMEM_ARENA_PADDING (MMEM_ALIGNMENT_CACHELINE - (sizeof( size_t ) * 2 + sizeof( void *) ) % MMEM_ALIGNMENT_CACHELINE)
-/// @brief Size of the padding needed to make a complex arena struct cache aligned
-#define MMEM_CARENA_PADDING (MMEM_ALIGNMENT_CACHELINE - (sizeof( size_t ) * 2 + sizeof( void * ) * 3) % MMEM_ALIGNMENT_CACHELINE)
+#if MMEM_ALIGNMENT_POLICY & MMEM_ALIGNMENT_POLICY_STRUCT
+#define MMEM_STRUCT typedef struct MMEM_ALIGNED( MMEM_ALIGNMENT_CACHELINE )
+#else
+#define MMEM_STRUCT typedef struct
+#endif
+
+typedef void * (*AllocateFct)( size_t const element_size, size_t const capacity );
+typedef void (*ReleaseFct)( void * memory );
+
+/**
+ * @brief Memory Pool state structure.
+ * @details Refrain from accessing members directly unless you know what you do!
+ */
+MMEM_STRUCT {
+	/// @brief Number of slots used in this pool
+	size_t Used;
+	/// @brief Active cursor for searching available slots
+	size_t Cursor;
+	/// @brief Anonymous List of slot states( USED/UNUSED )
+	void * List;
+	/// @brief Raw chunk of memory owned by this pool
+	void * Raw;
+	/// @brief Size of the element type managed by this pool in bytes
+	size_t ElementSize;
+	/// @brief Maximum number of elements managable by this pool
+	size_t Capacity;
+	/// @brief Pointer to a function that will be used to deallocate the memory block
+	void (*Release)( void * chunk );
+} MemoryPool;
+
+MMEM_STRUCT {
+	/// @brief Number of bytes used in this arena
+	size_t Used;
+	/// @brief Raw chunk of memory owned by this pool
+	void * Raw;
+	/// @brief Maximum number of bytes managable by this arena
+	size_t Capacity;
+	/// @brief Pointer to a function that will be used to deallocate the memory block
+	void (*Release)( void * chunk );
+} MemoryArena;
 
 /**
  * @brief Calculates kilobytes to bytes
@@ -122,83 +156,22 @@ static inline size_t TBytesToBytesF( double terabytes ) {
 }
 
 /**
- * @brief Memory Pool state structure.
- * @details Refrain from accessing members directly unless you know what you do!
- */
-typedef struct {
-	/// @brief Number of slots used in this pool
-	size_t Used;
-	/// @brief Active cursor for searching available slots
-	size_t Cursor;
-	/// @brief Anonymous List of slot states( USED/UNUSED )
-	void * List;
-	/// @brief Raw chunk of memory owned by this pool
-	void * Raw;
-	/// @brief Size of the element type managed by this pool in bytes
-	size_t ElementSize;
-	/// @brief Maximum number of elements managable by this pool
-	size_t Capacity;
-#if MMEM_ALIGNMENT_POLICY & MMEM_ALIGNMENT_POLICY_STRUCT
-	/// @brief Padding bytes
-	char __PADDING[MMEM_POOL_PADDING];
-#endif
-} MemoryPool;
-
-typedef struct {
-	/// @brief Number of slots used in this pool
-	size_t Used;
-	/// @brief Active cursor for searching available slots
-	size_t Cursor;
-	/// @brief Anonymous List of slot states( USED/UNUSED )
-	void * List;
-	/// @brief Raw chunk of memory owned by this pool
-	void * Raw;
-	/// @brief Size of the element type managed by this pool in bytes
-	size_t ElementSize;
-	/// @brief Maximum number of elements managable by this pool
-	size_t Capacity;
-	/// @brief Pointer to a function that will be used to allocate the memory block
-	void * (*ChunkAllocate)( size_t capacity, size_t element_size );
-	/// @brief Pointer to a function that will be used to deallocate the memory block
-	void (*ChunkRelease)( void * chunk );
-#if MMEM_ALIGNMENT_POLICY & MMEM_ALIGNMENT_POLICY_STRUCT
-	/// @brief Padding bytes
-	char __PADDING[MMEM_CPOOL_PADDING];
-#endif
-} ComplexPool;
-
-typedef struct {
-	/// @brief Number of bytes used in this arena
-	size_t Used;
-	/// @brief Raw chunk of memory owned by this pool
-	void * Raw;
-	/// @brief Maximum number of bytes managable by this arena
-	size_t Capacity;
-#if MMEM_ALIGNMENT_POLICY & MMEM_ALIGNMENT_POLICY_STRUCT
-	/// @brief Padding bytes
-	char __PADDING[MMEM_ARENA_PADDING];
-#endif
-} MemoryArena;
-
-typedef struct {
-	size_t Used;
-	void * Raw;
-	size_t Capacity;
-	void * (*ChunkAllocate)( size_t capacity );
-	void (*ChunkRelease)( void * chunk );
-#if MMEM_ALIGNMENT_POLICY & MMEM_ALIGNMENT_POLICY_STRUCT
-	/// @brief Padding bytes
-	char __PADDING[MMEM_CARENA_PADDING];
-#endif
-} ComplexArena;
-
-/**
  * @brief Creates a pool for elements of given size
  * @param element_size	Size of the object types in bytes
  * @param capacity		Maximum number of objects managable
  * @return MemoryPool	Clean state of the pool
  */
 MemoryPool PoolCreate( size_t const element_size, size_t const capacity );
+
+/**
+ * @brief Creates a pool for elements of given size
+ * @param element_size	Size of the object types in bytes
+ * @param capacity		Maximum number of objects managable
+ * @param allocate_fct	Pointer to the function to preallocate the pool memory
+ * @param release_fct	Pointer to the function to release the pool memory
+ * @return MemoryPool	Clean state of the pool
+ */
+MemoryPool PoolCreateEx( size_t const element_size, size_t const capacity, AllocateFct const allocate_fct, ReleaseFct const release_fct );
 
 /**
  * @brief Releases all allocated resources of the pool to the operating system and invalidates the state
@@ -250,6 +223,15 @@ static inline size_t PoolSlotsAvailable( MemoryPool * pool ) {
  * @return MemoryArena	Clean state of the arena
  */
 MemoryArena ArenaCreate( size_t const capacity );
+
+/**
+ * @brief Creates an arena of given number of bytes
+ * @param capacity		Number of bytes managed by this arena
+ * @param allocate_fct	Pointer to the function to preallocate the arena memory
+ * @param release_fct	Pointer to the function to release the arena memory
+ * @return MemoryArena	Clean state of the arena
+ */
+MemoryArena ArenaCreateEx( size_t const capacity, AllocateFct const allocate_fct, ReleaseFct const release_fct );
 
 /**
  * @brief Releases all allocated resources of the arena to the operating system and invalidates the state

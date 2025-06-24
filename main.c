@@ -17,13 +17,7 @@ int main(void) {
 	printf( "Zero-Policy: %d\n", MMEM_ZERO_POLICY );
 	printf( "Alignment-Policy: %d\n", MMEM_ALIGNMENT_POLICY );
 	printf( "sizeof MemoryPool: %zu\n", sizeof( MemoryPool ) );
-	printf( "padding: %lu\n", MMEM_POOL_PADDING );
-	printf( "sizeof ComplexPool: %zu\n", sizeof( ComplexPool ) );
-	printf( "padding: %lu\n", MMEM_CPOOL_PADDING );
 	printf( "sizeof MemoryArena: %zu\n", sizeof( MemoryArena ) );
-	printf( "padding: %lu\n", MMEM_ARENA_PADDING );
-	printf( "sizeof ComplexArena: %zu\n", sizeof( ComplexArena ) );
-	printf( "padding: %lu\n", MMEM_CARENA_PADDING );
 
     // --- Pool Test ---
     MemoryPool pool = PoolCreate(sizeof(TestStruct), POOL_CAPACITY);

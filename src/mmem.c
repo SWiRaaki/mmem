@@ -64,16 +64,23 @@ static inline void * Allocate( size_t const capacity, size_t const size ) {
 }
 
 MemoryPool PoolCreate( size_t const p_element_size, size_t const p_capacity ) {
+	return PoolCreateEx( p_element_size, p_capacity, Allocate, free );
+}
+
+MemoryPool PoolCreateEx( size_t const p_element_size, size_t const p_capacity, AllocateFct const p_allocate_fct, ReleaseFct const p_release_fct ) {
 	return (MemoryPool) {
-		.Raw = Allocate( p_capacity, p_element_size ),
+		.Used = 0,
+		.Cursor = 0,
 		.List = calloc( Align( bitslots( (bitslot_t)p_capacity ) ), sizeof( bitslot_t ) ),
+		.Raw = p_allocate_fct ? p_allocate_fct( p_capacity, p_element_size ) : Allocate( p_element_size, p_capacity ),
 		.ElementSize = p_element_size,
-		.Capacity = Align( p_capacity )
+		.Capacity = Align( p_capacity ),
+		.Release = p_release_fct ? p_release_fct : free
 	};
 }
 
 void PoolDestroy( MemoryPool * p_pool ) {
-	free( p_pool->Raw );
+	p_pool->Release( p_pool->Raw );
 	free( p_pool->List );
 
 #if MMEM_ZERO_POLICY == MMEM_ZERO_POLICY_ONRELEASE
@@ -136,15 +143,20 @@ void PoolReset( MemoryPool * p_pool ) {
 }
 
 MemoryArena ArenaCreate( const size_t p_capacity ) {
+	return ArenaCreateEx( p_capacity, Allocate, free );
+}
+
+MemoryArena ArenaCreateEx( const size_t p_capacity, AllocateFct const p_allocate_fct, ReleaseFct const p_release_fct ) {
 	return (MemoryArena) {
 		.Used = 0,
-		.Raw = Allocate( p_capacity, 1 ),
-		.Capacity = Align( p_capacity )
+		.Raw = p_allocate_fct ? p_allocate_fct( p_capacity, 1 ) : Allocate( p_capacity, 1 ),
+		.Capacity = Align( p_capacity ),
+		.Release = p_release_fct ? p_release_fct : free
 	};
 }
 
 void ArenaDestroy( MemoryArena * p_arena ) {
-	free( p_arena->Raw );
+	p_arena->Release( p_arena->Raw );
 
 #if MMEM_ZERO_POLICY == MMEM_ZERO_POLICY_ONRELEASE
 	memset( p_arena, 0x00, sizeof( MemoryArena ) );
