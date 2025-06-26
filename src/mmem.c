@@ -168,8 +168,10 @@ void * ArenaAllocate( MemoryArena * p_arena, size_t p_size ) {
 		return NULL;
 	}
 
-	void * ptr = (char *)p_arena->Raw + p_size;
+	void * ptr = (char *)p_arena->Raw + p_arena->Used;
 	ZeroOnAllocate( ptr, p_size );
+
+	p_arena->Used += p_size;
 	return ptr;
 }
 
