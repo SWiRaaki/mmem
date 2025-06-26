@@ -162,7 +162,6 @@ That can mean being named in the credits of a game, special thanks sections or o
 ## Planned Features
 - Debug build support: memory poisoning, and assertions
 - Reference Counting for analytics like valgrind does for malloc/calloc/free
-- Benchmarks and performance comparisons with malloc and calloc
 
 ### Benchmarks
 This is a special point in the planned features since having an automated test for this will help optimize the library.

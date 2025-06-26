@@ -6,6 +6,12 @@
 
 #include "mmem.compiler.h"
 
+#define MMEM_VERSION_MAJOR 0
+#define MMEM_VERSION_MINOR 1
+#define MMEM_VERSION_PATCH 0
+#define MMEM_VERSION_STRING "0.1.0-beta"
+
+
 /// @brief Factor to calculate kilobytes to bytes
 #define MMEM_KB_FACTOR (1024LU)
 /// @brief Factor to calculate megabytes to bytes
